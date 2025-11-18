@@ -9,13 +9,21 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@farcaster/frame-sdk": "^0.0.64",
+    "@tanstack/react-query": "^5.90.10",
+    "axios": "^1.13.2",
+    "ethers": "^6.15.0",
+    "mongoose": "^8.20.0",
     "next": "16.0.3",
+    "pinata": "^2.5.1",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "viem": "^2.39.2",
+    "wagmi": "^2.19.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
