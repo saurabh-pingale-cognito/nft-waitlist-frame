@@ -18,10 +18,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await dbConnect();
     const { fid, wallet: providedWallet } = await req.json();
 
+    await dbConnect();
+
     const detectedWallet = await getWallet(fid);
+
     if (!validateWallet(providedWallet) || providedWallet !== detectedWallet) {
       return NextResponse.json({ error: 'Invalid wallet' }, { status: 400 });
     }
@@ -36,25 +38,35 @@ export async function POST(req: NextRequest) {
 
     const neynarUser = await getUserByFid(fid);
     const imageUri = await uploadImage(neynarUser.pfp_url);
+
     const metadataUri = await uploadMetadata(`Waitlist NFT for ${neynarUser.username}`, 'Farcaster reward', imageUri);
 
     const provider = new ethers.JsonRpcProvider(RPC);
+
     const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+    await wallet.getAddress();
+
     const contract = new ethers.Contract(CONTRACT_ADDR, ABI, wallet);
+
     const tx = await contract.safeMint(providedWallet, metadataUri);
     await tx.wait();
 
     user.mintCount += 1;
     await user.save();
 
-    return NextResponse.json({
+    const finalTotalSupply = await contract.totalSupply();
+
+    const response = {
       success: true,
-      tokenId: await contract.totalSupply() - 1,
-      metadataUri,
+      tokenId: (finalTotalSupply - BigInt(1)).toString(),
+      imageUri,
+      metadataUri, 
       remainingMints: 2 - user.mintCount
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error(error);
+    console.error('Mint failed:', error);
     return NextResponse.json({ error: 'Mint failed' }, { status: 500 });
   }
 }
