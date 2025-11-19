@@ -44,14 +44,16 @@ export async function POST(req: NextRequest) {
 
     const neynarUser = await getUserByFid(fid);
     const imageUri = await uploadImage(neynarUser.pfp_url);
-    const metadataUri = await uploadMetadata(`Waitlist NFT for ${neynarUser.username}`, 'Farcaster reward', imageUri);
+    const imageHttp = imageUri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+    const metadataUri = await uploadMetadata(`Waitlist NFT for ${neynarUser.username}`, 'Farcaster reward', imageHttp);
+    const metadataHttp = metadataUri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
 
     const provider = new ethers.JsonRpcProvider(RPC);
     const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
     
     const contract = new ethers.Contract(CONTRACT_ADDR, ABI, wallet);
 
-    const tx = await contract.safeMint(providedWallet, metadataUri);
+    const tx = await contract.safeMint(providedWallet, metadataHttp);
     await tx.wait();
 
     user.mintCount += 1;
@@ -64,6 +66,7 @@ export async function POST(req: NextRequest) {
       tokenId: (finalTotalSupply - BigInt(1)).toString(),
       imageUri,
       metadataUri, 
+      contractAddress: CONTRACT_ADDR,
       remainingMints: 2 - user.mintCount
     };
 

@@ -32,9 +32,11 @@ export function useFrameApi() {
       const data = await res.json();
       throw new Error(data.error || 'Mint failed');
     }
-    const { imageUri } = await res.json();
+    const { imageUri, tokenId, contractAddress } = await res.json();
     dispatch({ type: 'SET_WALLET', payload: wallet });
     dispatch({ type: 'SET_IMAGE_URI', payload: imageUri });
+    dispatch({ type: 'SET_TOKEN_ID', payload: tokenId });
+    dispatch({ type: 'SET_CONTRACT_ADDRESS', payload: contractAddress });
     dispatch({ type: 'SET_SCREEN', payload: 'mintSuccess' });
   };
 

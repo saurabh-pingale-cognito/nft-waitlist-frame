@@ -9,6 +9,8 @@ export interface AppState {
   wallet: string;
   fid: number;
   imageUri: string;
+  tokenId: string;
+  contractAddress: string;
   error: string | null;
 }
 
@@ -17,6 +19,8 @@ export type Action =
   | { type: 'SET_WALLET'; payload: string }
   | { type: 'SET_FID'; payload: number }
   | { type: 'SET_IMAGE_URI'; payload: string }
+  | { type: 'SET_TOKEN_ID'; payload: string }
+  | { type: 'SET_CONTRACT_ADDRESS'; payload: string }
   | { type: 'SET_ERROR'; payload: string | null };
 
 const initialState: AppState = {
@@ -24,6 +28,8 @@ const initialState: AppState = {
   wallet: '',
   fid: 0,
   imageUri: '',
+  tokenId: '',
+  contractAddress: '',
   error: null,
 };
 
@@ -37,6 +43,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, fid: action.payload };
     case 'SET_IMAGE_URI':
       return { ...state, imageUri: action.payload };
+    case 'SET_TOKEN_ID':
+      return { ...state, tokenId: action.payload };
+    case 'SET_CONTRACT_ADDRESS':
+      return { ...state, contractAddress: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     default:
