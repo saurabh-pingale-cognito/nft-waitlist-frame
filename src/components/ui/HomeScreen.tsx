@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { useFrameContext } from '@/context/FrameContext';
 import { useFrameApi } from '@/hooks/useFrameApi';
@@ -12,8 +12,10 @@ export default function HomeScreen() {
   const { state, dispatch } = useFrameContext();
   const { joinWaitlist } = useFrameApi();
 
+  const [wallet, setWallet] = useState(state.wallet);
   const [detectLoading, setDetectLoading] = useState(true);
   const [joinLoading, setJoinLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const detect = async () => {
     if (state.fid === 0) {
@@ -22,9 +24,15 @@ export default function HomeScreen() {
     }
     setDetectLoading(true);
     try {
-      const wallet = await getWallet(state.fid);
-      if (wallet) {
-        dispatch({ type: 'SET_WALLET', payload: wallet });
+      const detectedWallet = await getWallet(state.fid);
+      if (detectedWallet) {
+        setWallet((prev) => {
+          if(prev === '' || prev === state.wallet) {
+            dispatch({ type: 'SET_WALLET', payload: detectedWallet });
+            return detectedWallet;
+          }
+          return prev;
+        });
       }
     } catch (e) {
       console.error('Detect failed', e);
@@ -38,6 +46,18 @@ export default function HomeScreen() {
   }, [state.fid]);
 
   useEffect(() => {
+    if (state.wallet && wallet === '') {
+      setWallet(state.wallet);
+    }
+  }, [state.wallet]);
+
+  useEffect(() => {
+    if (inputRef.current && wallet !== '') {
+      inputRef.current.setSelectionRange(wallet.length, wallet.length);
+    }
+  }, [wallet]);
+
+  useEffect(() => {
     if (state.error) {
       const timeout = setTimeout(() => {
         dispatch({ type: 'SET_ERROR', payload: null });
@@ -47,14 +67,14 @@ export default function HomeScreen() {
   }, [state.error, dispatch]);
 
   const handleJoin = async () => {
-    if (!validateWallet(state.wallet)) {
+    if (!wallet || !validateWallet(wallet)) {
       dispatch({ type: 'SET_ERROR', payload: 'Invalid wallet address' });
       return;
     }
 
     setJoinLoading(true);
     try {
-      await joinWaitlist(state.wallet);
+      await joinWaitlist(wallet);
     } catch (error) {
       console.error('Join waitlist failed:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to join waitlist' });
@@ -63,7 +83,15 @@ export default function HomeScreen() {
     }
   };
 
-  const isButtonDisabled = detectLoading || joinLoading || !state.wallet || !validateWallet(state.wallet);
+  const isButtonDisabled = detectLoading || joinLoading || !wallet || !validateWallet(wallet);
+
+  const placeholderText = state.fid === 0 
+    ? 'Open in Farcaster app to detect wallet (verify ETH in profile)' 
+    : detectLoading 
+    ? 'Detecting wallet...' 
+    : !wallet 
+    ? 'No wallet detected' 
+    : '';
 
   return (
     <div className="miniapp-container bg-gradient-to-b from-gray-900 to-black rounded-lg shadow-xl flex flex-col items-center justify-center space-y-2 max-w-md mx-auto p-2">
@@ -81,12 +109,13 @@ export default function HomeScreen() {
         <div className="w-full">
           <div className="relative">
             <input
+              ref={inputRef}
               type="text"
-              value={state.wallet}
-              placeholder={state.fid === 0 ? 'Open in Farcaster app to detect wallet (verify ETH in profile)' : detectLoading ? 'Detecting wallet...' : 'No wallet detected'}
+              value={wallet}
+              onChange={(e) => setWallet(e.target.value)}
+              placeholder={placeholderText}
               className="w-full bg-gray-800/50 backdrop-blur-sm p-2 pr-8 rounded text-center text-sm border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-70"
-              disabled
-              readOnly
+              autoFocus
             />
             {detectLoading && (
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">

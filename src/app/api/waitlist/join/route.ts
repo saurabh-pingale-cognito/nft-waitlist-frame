@@ -8,20 +8,27 @@ import { validateWallet } from '@/lib/utils';
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { fid } = await req.json();
-    const wallet = await getWallet(fid);
-    if (!wallet || !validateWallet(wallet)) {
-      return NextResponse.json({ error: 'No verified wallet found' }, { status: 400 });
+    const { fid, wallet: providedWallet } = await req.json();
+    let finalWallet: string;
+
+    if (providedWallet && validateWallet(providedWallet)) {
+      finalWallet = providedWallet;
+    } else {
+      const tempWallet = await getWallet(fid);
+      if (!tempWallet || !validateWallet(tempWallet)) {
+        return NextResponse.json({ error: 'No verified wallet found and no address provided' }, { status: 400 });
+      }
+      finalWallet = tempWallet;
     }
 
-    let user = await Waitlist.findOne({ wallet });
+    let user = await Waitlist.findOne({ wallet: finalWallet });
     if (user) {
-      return NextResponse.json({ success: true, message: 'Already on waitlist' });
+      return NextResponse.json({ success: true, message: 'Address already on waitlist' });
     }
 
     const neynarUser = await getUserByFid(fid);
     user = new Waitlist({
-      wallet,
+      wallet: finalWallet,
       fid,
       username: neynarUser.username,
       mintCount: 0

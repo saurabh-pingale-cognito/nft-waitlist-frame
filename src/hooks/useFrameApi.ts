@@ -8,7 +8,7 @@ export function useFrameApi() {
       const res = await fetch('/api/waitlist/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fid: state.fid }),
+        body: JSON.stringify({ fid: state.fid, wallet }),
       });
       if (!res.ok) {
         const data = await res.json();

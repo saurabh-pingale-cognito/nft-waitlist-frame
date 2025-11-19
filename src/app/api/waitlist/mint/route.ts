@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 
-import { getUserByFid, getWallet } from '@/services/neynar';
+import { getUserByFid } from '@/services/neynar';
 import { uploadImage, uploadMetadata } from '@/services/pinata';
 import { dbConnect } from '@/lib/db';
 import Waitlist from '@/lib/models/Waitlist';
@@ -14,7 +14,7 @@ const CONTRACT_ADDR = process.env.CONTRACT_ADDRESS!;
 
 export async function POST(req: NextRequest) {
   if (process.env.MINT_PHASE !== 'true') {
-    return NextResponse.json({error: 'Mint not live' }, { status: 403 });
+    return NextResponse.json({ error: 'Mint not live' }, { status: 403 });
   }
 
   try {
@@ -22,30 +22,33 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    const detectedWallet = await getWallet(fid);
-
-    if (!validateWallet(providedWallet) || providedWallet !== detectedWallet) {
-      return NextResponse.json({ error: 'Invalid wallet' }, { status: 400 });
+    if (!providedWallet || !validateWallet(providedWallet)) {
+      return NextResponse.json({ error: 'Invalid wallet address format' }, { status: 400 });
     }
 
     const user = await Waitlist.findOne({ wallet: providedWallet });
-    if (!user || user.mintCount >= 2) {
-      return NextResponse.json({
-        error: 'Not on waitlist or mint limit reached (max 2 per wallet)' },
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'This wallet is not on the waitlist. Please use the address you registered with.' },
+        { status: 400 }
+      );
+    }
+
+    if (user.mintCount >= 2) {
+      return NextResponse.json(
+        { error: 'Mint limit reached (max 2 per wallet)' },
         { status: 400 }
       );
     }
 
     const neynarUser = await getUserByFid(fid);
     const imageUri = await uploadImage(neynarUser.pfp_url);
-
     const metadataUri = await uploadMetadata(`Waitlist NFT for ${neynarUser.username}`, 'Farcaster reward', imageUri);
 
     const provider = new ethers.JsonRpcProvider(RPC);
-
     const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-    await wallet.getAddress();
-
+    
     const contract = new ethers.Contract(CONTRACT_ADDR, ABI, wallet);
 
     const tx = await contract.safeMint(providedWallet, metadataUri);
@@ -65,8 +68,8 @@ export async function POST(req: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Mint failed:', error);
-    return NextResponse.json({ error: 'Mint failed' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Mint failed' }, { status: 500 });
   }
 }
